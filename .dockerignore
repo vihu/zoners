@@ -1,5 +1,25 @@
-.ai-docs
-.env
-.git
-.github
-target
+# Only build inputs may enter the context.
+**
+!Cargo.toml
+!Cargo.lock
+!README.md
+!LICENSE
+!src/
+!src/**/
+!src/**/*.rs
+!templates/
+!templates/*.html
+!assets/
+!assets/*.css
+!assets/*.js
+!assets/*.svg
+!assets/fonts/
+!assets/fonts/*.woff2
+!assets/fonts/OFL.txt
+
+# These remain excluded even inside an allowed source directory.
+**/.env*
+**/*.pem
+**/*.key
+**/id_rsa*
+**/secrets/**

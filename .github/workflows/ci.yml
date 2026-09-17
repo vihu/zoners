@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, "1.93"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain and checks
+        run: rustup toolchain install "${{ matrix.toolchain }}" --profile minimal --component rustfmt,clippy
+      - name: Format
+        run: cargo +${{ matrix.toolchain }} fmt --check
+      - name: Clippy, CLI only
+        run: cargo +${{ matrix.toolchain }} clippy --locked --all-targets -- -D warnings
+      - name: Clippy, with the web app
+        run: cargo +${{ matrix.toolchain }} clippy --locked --all-targets --all-features -- -D warnings
+      - name: Test
+        run: cargo +${{ matrix.toolchain }} test --locked --all-features
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build image without publishing
+        run: docker build --pull -t zoners:ci .

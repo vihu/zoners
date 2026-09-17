@@ -1,8 +1,11 @@
 [package]
-default-run = "zoners"
-edition     = "2021"
-name        = "zoners"
-version     = "0.1.0"
+default-run  = "zoners"
+description  = "One moment in time, read in every zone you care about"
+edition      = "2021"
+license      = "AGPL-3.0-only"
+name         = "zoners"
+rust-version = "1.93"
+version      = "0.1.0"
 
 [[bin]]
 name              = "zoners-web"
