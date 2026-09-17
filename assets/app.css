@@ -1,0 +1,166 @@
+/* zoners: a world timer dial. daisyUI supplies btn, input, range, table, alert and the token names. */
+
+@font-face{font-family:"Atkinson Next";font-weight:400;font-display:swap;src:url(fonts/AtkinsonHyperlegibleNext-Regular.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Next";font-weight:600;font-display:swap;src:url(fonts/AtkinsonHyperlegibleNext-SemiBold.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Next";font-weight:700;font-display:swap;src:url(fonts/AtkinsonHyperlegibleNext-Bold.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Mono";font-weight:400;font-display:swap;src:url(fonts/AtkinsonHyperlegibleMono-Regular.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Mono";font-weight:500;font-display:swap;src:url(fonts/AtkinsonHyperlegibleMono-Medium.woff2) format("woff2")}
+
+/* One angle per place. Registered so that it can transition. */
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+
+[hidden]{display:none!important}   /* daisyUI .alert sets display:grid, which beats the hidden attribute */
+
+:root{
+  /* Every colour holds its light and dark value. The scheme follows the system until the
+     toggle sets data-theme (kept in localStorage, applied by the inline script in <head>). */
+  color-scheme:light dark;
+  --color-base-100:light-dark(oklch(99% .003 230),oklch(23% .02 250));        /* dial face, table back */
+  --color-base-200:light-dark(oklch(94.5% .008 230),oklch(17.5% .015 250));   /* page */
+  --color-base-300:light-dark(oklch(87% .012 230),oklch(32% .025 250));
+  --color-base-content:light-dark(oklch(25% .03 250),oklch(92% .01 240));
+  /* The hand and the source: teal, the one cool note against the sun ring. */
+  --color-primary:light-dark(oklch(50% .1 200),oklch(78% .11 195));
+  --color-primary-content:light-dark(oklch(99% .01 200),oklch(20% .04 200));
+  --color-error:light-dark(oklch(52% .2 25),oklch(76% .15 25));
+  --muted:light-dark(oklch(47% .025 250),oklch(71% .02 245));
+  /* The ring follows the sun: indigo night, orange twilight (awake), gold day (work). --s-* paint the ring, the rest is text. */
+  --s-night:light-dark(oklch(31% .09 280),oklch(33% .09 280));
+  --s-awake:light-dark(oklch(70% .16 48),oklch(68% .15 48));
+  --s-work:light-dark(oklch(85% .15 92),oklch(86% .13 95));
+  --night:light-dark(oklch(44% .09 280),oklch(76% .08 280));
+  --awake:light-dark(oklch(52% .15 45),oklch(78% .13 52));
+  --work:light-dark(oklch(46% .1 92),oklch(89% .12 96));
+  --other-day:light-dark(oklch(50% .2 350),oklch(78% .15 350));
+  --shadow-soft:light-dark(rgb(20 30 60/.17),rgb(0 0 0/.17));
+  --shadow-tight:light-dark(rgb(20 30 60/.13),rgb(0 0 0/.13));
+  --radius-selector:.375rem;--radius-field:.375rem;--radius-box:1rem;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --flip:.9s;
+  --sans:"Atkinson Next",system-ui,sans-serif;
+  --mono:"Atkinson Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+
+body{min-height:100dvh;background:var(--color-base-200);color:var(--color-base-content);
+  font:400 1rem/1.45 var(--sans);font-synthesis:none}
+::selection{background:color-mix(in oklch,var(--color-primary) 30%,transparent)}
+input{caret-color:var(--color-primary);accent-color:var(--color-primary)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+.stage{display:grid;grid-template-rows:auto auto 1fr auto;justify-items:center;gap:.75rem;min-height:100dvh;
+  padding:clamp(.75rem,2.5vh,1.5rem) 1rem clamp(1rem,3vh,2rem)}
+.bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;width:100%;max-width:76rem}
+.bar h1{font-size:1.25rem;font-weight:700;letter-spacing:-.01em}
+.tools{justify-self:end;display:flex;align-items:center;gap:.25rem}
+.live::before{content:"";width:.5rem;height:.5rem;border-radius:50%;background:var(--color-primary)}
+/* One beat for everything that says "live": the dot and every colon change state once a second, together.
+   They stay in step because htmx swaps the whole stage, so all of them start in the same frame. */
+@keyframes tick{0%,45%{opacity:1}50%,95%{opacity:.2}}
+.live::before,[data-live] .c{animation:tick 2s linear infinite}
+.c{font-style:normal}
+.bar svg{width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.flipctl .to-dial,#flip:checked+label .to-table{display:none}
+#flip:checked+label .to-dial{display:inline}
+#flip:focus-visible+label{outline:2px solid var(--color-primary);outline-offset:2px}
+.alert{grid-row:2;width:min(100%,38rem)}
+.alert span::first-letter{text-transform:uppercase}
+
+/* The flipper: dial on the front, table on the back. The checkbox drives it, no script needed.
+   The hidden face also drops out of the tab order and the accessibility tree, halfway through the turn. */
+.flipper{grid-row:3;position:relative;align-self:center;width:min(100%,46rem,calc(100dvh - 11.5rem));aspect-ratio:1;perspective:1800px;container-type:inline-size}
+.inner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform var(--flip) var(--ease)}
+.dial,.back{position:absolute;backface-visibility:hidden;transition:visibility 0s calc(var(--flip)*.14)}
+.back{visibility:hidden}
+.stage:has(#flip:checked) .inner{transform:rotateY(180deg)}
+.stage:has(#flip:checked) .dial{visibility:hidden}
+.stage:has(#flip:checked) .back{visibility:visible}
+
+.dial{inset:0;--W:72%;--labx:44.5%;--laby:39.5%}
+/* The back hugs the table. Its type scales with the square, so cells never have to wrap.
+   Centred with auto margins: a translate of -50% lands on half pixels and blurs the text of a 3D layer. */
+.back{inset:0;margin:auto;transform:rotateY(180deg);width:max-content;height:max-content;max-width:100%;max-height:100%;overflow:auto;
+  padding:clamp(.5rem,3.5cqw,2rem);font-size:clamp(.75rem,2.5cqw,1.0625rem);
+  background:var(--color-base-100);border:1px solid var(--color-base-300);border-radius:var(--radius-box);
+  box-shadow:0 22px 34px var(--shadow-soft),0 2px 5px var(--shadow-tight)}
+
+.dial svg{position:absolute;left:50%;top:50%;width:var(--W);translate:-50% -50%;overflow:visible;
+  filter:drop-shadow(0 22px 34px var(--shadow-soft)) drop-shadow(0 2px 5px var(--shadow-tight))}
+.face{fill:var(--color-base-100);stroke:var(--color-base-300)}
+.plate{fill:none;stroke:var(--color-base-300)}
+.ring{fill:none;stroke-width:32}
+.ring.awake{stroke:var(--s-awake)}.ring.work{stroke:var(--s-work)}.ring.night{stroke:var(--s-night)}
+.tick{stroke:var(--color-base-content);stroke-width:1.25;opacity:.55}
+.tick.major{stroke-width:2;opacity:.9}
+.num{fill:var(--color-base-content);font:500 12.5px var(--mono);text-anchor:middle;dominant-baseline:central}
+.num.minor{fill:var(--muted);font-weight:400}
+.mk,.hand{transform:rotate(var(--a));transition:--a .7s var(--ease)}
+.mk line{stroke:var(--color-base-content);stroke-width:1.5}
+.mk circle{fill:var(--color-base-content)}
+.mk.src line{stroke:var(--color-primary);stroke-width:2.5}
+.mk.src circle{fill:var(--color-primary)}
+.hand{fill:var(--color-primary)}
+
+/* Centre of the dial: the inputs. */
+.now{position:absolute;left:50%;top:50%;translate:-50% -50%;width:34cqw;display:grid;justify-items:center;gap:.2em;line-height:1.1}
+.now .input{width:auto;height:auto;min-height:0;padding:.02em .2em;border:0;border-bottom:1px dashed color-mix(in oklch,var(--muted) 55%,transparent);
+  border-radius:var(--radius-field);background:transparent;box-shadow:none;text-align:center;color:inherit}
+.now .btn{background:transparent}
+@media (hover:hover){.now .input:hover,.now .btn:hover{background:var(--color-base-200)}}
+.now [aria-invalid]{border-bottom:2px solid var(--color-error)}
+.now .t,.clock{font:500 6.6cqw/1.1 var(--mono);letter-spacing:-.04em}
+.now .t{width:3.6em}
+/* An input cannot style one of its characters. While live and not being edited, the field's text
+   goes transparent and a copy with a blinking colon sits on top of it. */
+.tw{position:relative;display:inline-grid}
+.clock{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;padding:.02em .2em}
+[data-live] .tw:has(.clock) .t:not(:focus){color:transparent}
+[data-live] .tw:not(:focus-within) .clock{display:flex}   /* flex, not grid: grid would stack "21", ":" and "12" as three rows */
+.datewrap{position:relative;display:inline-grid}
+.now .d{height:auto;min-height:0;padding:.15em .5em;font-size:max(.75rem,2.2cqw);font-weight:400;color:var(--muted);border:0;
+  border-bottom:1px dashed color-mix(in oklch,var(--muted) 55%,transparent);box-shadow:none}
+.pick{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none}
+.now .z{width:11em;max-width:100%;font-size:max(.75rem,2.2cqw);font-weight:600;color:var(--color-primary)}
+
+/* Place labels ride an ellipse around the ring. --tier and --extra push crowded or tall labels outwards. */
+.lbl{position:absolute;--tier:0;--extra:0;translate:-50% -50%;text-align:center;white-space:nowrap;
+  left:calc(50% + var(--labx)*sin(var(--a)));
+  top:calc(50% - (var(--laby) + var(--tier)*2.7em + var(--extra)*.6em)*cos(var(--a)));
+  font:600 clamp(.75rem,2.1cqw,1rem)/1.2 var(--sans);transition:--a .7s var(--ease)}
+.lbl b,.lbl span,.lbl em{display:block}
+.lbl b{font-weight:600}
+.lbl span{font:500 .93em/1.2 var(--mono)}
+.lbl em{font-style:normal;font-weight:600;font-size:.87em;color:var(--other-day)}
+.lbl.work span{color:var(--work)}.lbl.awake span{color:var(--awake)}.lbl.night span{color:var(--night)}
+.lbl.night b{color:var(--muted)}
+.lbl.src b{font-weight:700;color:var(--color-primary)}
+
+.turn{grid-row:4;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:1rem;width:min(100%,30rem);font-size:.875rem;color:var(--muted)}
+
+.back .table{width:auto;font-size:inherit}
+.back .table :is(th,td){padding:.55em .7em;white-space:nowrap}
+.back caption{caption-side:top;text-align:left;padding:0 .7em .6em;font-weight:600;white-space:normal}
+.back th{font-weight:400;color:var(--muted);font-size:.8em}
+.back td:first-child{max-width:12em;overflow:hidden;text-overflow:ellipsis}
+.back .tm,.back td.offc{font-family:var(--mono)}
+.back .tm{font-weight:500}
+.dot{display:inline-block;width:.55rem;height:.55rem;border-radius:50%;margin-right:.5rem;vertical-align:.05em}
+tr.work .dot{background:var(--s-work)}tr.awake .dot{background:var(--s-awake)}tr.night .dot{background:var(--s-night)}
+tr.work .bw{color:var(--work)}tr.awake .bw{color:var(--awake)}tr.night .bw{color:var(--night)}
+tr.night td:nth-child(-n+2){color:var(--muted)}
+tr.src td:first-child{font-weight:700}
+.dy.other{color:var(--other-day);font-weight:600}
+.offc{color:var(--muted)}
+
+@media (prefers-reduced-motion:reduce){.inner,.mk,.hand,.lbl,.dial,.back{transition:none}.live::before,[data-live] .c{animation:none}}
+/* A small square, whether from a phone or a short window: smaller ring, tighter labels. */
+@container (max-width:34rem){
+  .dial{--W:58%;--labx:40.5%;--laby:35%}
+  .now{width:23cqw}
+  .now .t,.clock{font-size:6cqw}
+  .now .z{width:100%}
+  .num{font-size:21px}
+  .num.minor{display:none}
+  .offc{display:none}
+}

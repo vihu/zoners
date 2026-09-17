@@ -1,0 +1,25 @@
+[package]
+default-run = "zoners"
+edition     = "2021"
+name        = "zoners"
+version     = "0.1.0"
+
+[[bin]]
+name              = "zoners-web"
+required-features = ["web"]
+
+[dependencies]
+anstream = "1.0.0"
+anstyle  = "1.0.14"
+askama   = { version = "0.16.1", optional = true }
+axum     = { version = "0.8.9", optional = true, default-features = false, features = ["http1", "query", "tokio"] }
+clap     = { version = "4.6.7", features = ["derive"] }
+jiff     = "0.2.37"
+serde    = { version = "1.0.229", optional = true, features = ["derive"] }
+tokio    = { version = "1.53.1", optional = true, features = ["macros", "net", "rt", "signal"] }
+
+[dev-dependencies]
+tower = { version = "0.5.3", features = ["util"] }
+
+[features]
+web = ["dep:askama", "dep:axum", "dep:serde", "dep:tokio", "jiff/tzdb-bundle-always"]

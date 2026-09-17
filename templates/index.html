@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>zoners</title>
+<link rel="icon" href="assets/favicon.svg?v={{ asset_version }}" type="image/svg+xml">
+<link rel="preload" href="assets/fonts/AtkinsonHyperlegibleNext-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/AtkinsonHyperlegibleMono-Medium.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/daisyui.css?v={{ asset_version }}">
+<link rel="stylesheet" href="assets/app.css?v={{ asset_version }}">
+<script>try{const t=localStorage.getItem("theme");if(t)document.documentElement.dataset.theme=t}catch{}</script>
+<script src="assets/htmx.min.js?v={{ asset_version }}" defer></script>
+<noscript><style>#theme{display:none}.datewrap .btn{display:none}.datewrap .pick{position:static;opacity:1;pointer-events:auto;width:auto;height:auto}</style></noscript>
+</head>
+<body>
+{# A clock time with its colon in an element of its own, so CSS can blink it. #}
+{% macro clock(t) %}{% if let Some((hh, mm)) = t.split_once(':') %}{{ hh }}<i class="c">:</i>{{ mm }}{% endif %}{% endmacro %}
+<main class="stage" id="stage"{% if live %} data-live{% endif %}{% if let Some(d) = dial %} data-src-off="{{ d.source_offset }}" data-days="{{ d.days }}"{% endif %}>
+  <header class="bar">
+    <h1>zoners</h1>
+    <span class="flipctl">
+      <input class="sr" type="checkbox" role="switch" id="flip" name="view" value="table" form="f" aria-label="Table view"{% if table_view %} checked{% endif %}>
+      <label class="btn btn-sm" for="flip">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>
+        <span class="to-table">Table view</span><span class="to-dial">Dial view</span>
+      </label>
+    </span>
+    <span class="tools">
+      <button class="btn btn-sm btn-ghost btn-square" id="theme" type="button" aria-label="Switch between light and dark" title="Switch between light and dark">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg>
+      </button>
+      {% if live %}<a class="btn btn-sm btn-ghost live" href="." title="Following the clock, refreshed every minute">Live</a>
+      {% else %}<a class="btn btn-sm btn-ghost" href="." title="Back to the current time, here">Now</a>{% endif %}
+    </span>
+  </header>
+
+  {% if let Some(message) = error %}
+  <div class="alert alert-error alert-soft" role="alert"><span>{{ message }}</span></div>
+  {% endif %}
+
+  <div class="flipper">
+    <div class="inner">
+      <section class="dial" aria-label="24 hour dial">
+        <svg viewBox="-176 -176 352 352" aria-hidden="true">
+          <circle class="face" r="172"/>
+          <g transform="rotate(-90)">
+            <circle class="ring awake" r="144"/>
+            <circle class="ring work" r="144" pathLength="24" stroke-dasharray="8 16" stroke-dashoffset="-21"/>
+            <circle class="ring night" r="144" pathLength="24" stroke-dasharray="9 15" stroke-dashoffset="-10"/>
+          </g>
+          {% for h in 0..24 %}<line class="tick{% if h % 3 == 0 %} major{% endif %}" y1="{% if h % 3 == 0 %}-118{% else %}-122{% endif %}" y2="-128" transform="rotate({{ h * 15 }})"/>{% endfor %}
+          <text class="num" y="-104">12</text><text class="num minor" x="73.5" y="-73.5">15</text>
+          <text class="num" x="104">18</text><text class="num minor" x="73.5" y="73.5">21</text>
+          <text class="num" y="104">00</text><text class="num minor" x="-73.5" y="73.5">03</text>
+          <text class="num" x="-104">06</text><text class="num minor" x="-73.5" y="-73.5">09</text>
+          <circle class="plate" r="90"/>
+          {% if let Some(d) = dial %}
+          <path class="hand" id="hand" style="--a:{{ d.hand_angle }}deg" d="M-1.25 -91 L-1.25 -116 L-5 -116 L0 -128 L5 -116 L1.25 -116 L1.25 -91 Z"/>
+          {% for m in d.marks %}
+          <g class="mk{% if m.is_source %} src{% endif %}" id="mk{{ m.offset }}" data-off="{{ m.offset }}" style="--a:{{ m.angle }}deg"><line y1="-160" y2="-168"/><circle cy="-171" r="{% if m.is_source %}4{% else %}3{% endif %}"/></g>
+          {% endfor %}
+          {% endif %}
+        </svg>
+
+        <form class="now" id="f" method="get" action="." autocomplete="off"
+              hx-get="." hx-target="#stage" hx-select="#stage" hx-swap="outerHTML" hx-push-url="true" hx-sync="this:replace">
+          <label class="sr" for="time">Time, for example 20:30 or 8.30pm</label>
+          <span class="tw">
+            <input class="input t" id="time" name="time" type="text" value="{{ time }}" placeholder="now" spellcheck="false" enterkeyhint="go"{% if invalid == "time" %} aria-invalid="true"{% endif %}>
+            {% if live && dial.is_some() %}<span class="clock" aria-hidden="true">{% call clock(time) %}{% endcall %}</span>{% endif %}
+          </span>
+          <span class="datewrap">
+            <button class="btn btn-ghost d" id="datebtn" type="button"{% if invalid == "date" %} aria-invalid="true"{% endif %}>{% if let Some(d) = dial %}{{ d.date_label }}{% else %}Pick a date{% endif %}</button>
+            <input class="pick" id="date" name="date" type="date" value="{{ date }}" tabindex="-1" aria-label="Date">
+          </span>
+          <label class="sr" for="zone">Source zone</label>
+          <input class="input z" id="zone" name="zone" type="text" value="{{ zone }}" list="zones" spellcheck="false" enterkeyhint="go"{% if invalid == "zone" %} aria-invalid="true"{% endif %}>
+          <button class="sr" type="submit" tabindex="-1">Convert</button>
+        </form>
+
+        {% if let Some(d) = dial %}
+        {% for m in d.marks %}
+        <div class="lbl {{ m.band }}{% if m.is_source %} src{% endif %}" id="lbl{{ m.offset }}" data-off="{{ m.offset }}" style="--a:{{ m.angle }}deg;--extra:{{ m.extra_lines }}">
+          {% for place in m.places %}<b>{{ place }}</b>{% endfor %}<span>{% call clock(m.time) %}{% endcall %}</span><em{% if !m.is_shifted %} hidden{% endif %}>{{ m.date }}</em>
+        </div>
+        {% endfor %}
+        {% endif %}
+      </section>
+
+      <section class="back" aria-label="Table view">
+        {% if let Some(d) = dial %}
+        <table class="table">
+          <caption><span id="captime">{% call clock(time) %}{% endcall %}</span>, {{ d.date_label }} in {{ zone }}</caption>
+          <thead><tr><th scope="col">Place</th><th scope="col">Time</th><th scope="col">Day</th><th scope="col" class="offc">Offset</th><th scope="col">Band</th></tr></thead>
+          <tbody>
+            {% for r in d.rows %}
+            <tr class="{{ r.band }}{% if r.is_source %} src{% endif %}" data-off="{{ r.offset }}"><td><i class="dot"></i>{{ r.label }}</td><td class="tm">{% call clock(r.time) %}{% endcall %}</td><td class="dy{% if r.is_shifted %} other{% endif %}">{{ r.date }}</td><td class="offc">{{ r.offset_label }}</td><td class="bw">{{ r.band }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  {% if let Some(d) = dial %}
+  <label class="turn"><span>Turn the day</span>
+    <input class="range range-xs range-primary" type="range" id="turn" min="0" max="1439" step="15" value="{{ d.minutes }}"></label>
+  {% endif %}
+</main>
+
+<datalist id="zones">{% for name in zone_names %}<option value="{{ name }}">{% endfor %}</datalist>
+<script src="assets/app.js?v={{ asset_version }}"></script>
+</body>
+</html>

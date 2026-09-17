@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-16 -16 32 32">
+  <g fill="none" stroke-width="7" transform="rotate(-90)">
+    <circle r="11" stroke="#e8803c"/>
+    <circle r="11" stroke="#f0cf5a" pathLength="24" stroke-dasharray="8 16" stroke-dashoffset="-21"/>
+    <circle r="11" stroke="#2c2a5c" pathLength="24" stroke-dasharray="9 15" stroke-dashoffset="-10"/>
+  </g>
+</svg>
