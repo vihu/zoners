@@ -7,6 +7,19 @@ One moment in time, read in every zone you care about. A CLI that prints a psql-
 
 ## Screenshots
 
+### Dial (light mode)
+<img width="1851" height="1434" alt="Screenshot_20260917_212755" src="https://github.com/user-attachments/assets/9fbf6218-2ba7-4e25-abf0-94e20f67e72b" />
+
+### Table (light mode)
+<img width="1836" height="1416" alt="Screenshot_20260917_212835" src="https://github.com/user-attachments/assets/bca41d37-ad1d-4966-97d3-f1ec000ac8b7" />
+
+### Dial (dark mode)
+<img width="1905" height="1434" alt="Screenshot_20260917_212735" src="https://github.com/user-attachments/assets/2806f3a3-ffd7-4046-ae01-a699db2f6043" />
+
+### Table (dark mode)
+<img width="1849" height="1423" alt="Screenshot_20260917_212811" src="https://github.com/user-attachments/assets/2c728402-003f-4a38-8eef-5905a838ffae" />
+
+
 ## Run
 
 ```sh
