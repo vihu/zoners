@@ -5,6 +5,8 @@
 
 One moment in time, read in every zone you care about. A CLI that prints a psql-style table, and a small self-hosted web app that shows the same answer on a live 24 hour dial.
 
+## Screenshots
+
 ## Run
 
 ```sh
@@ -24,11 +26,11 @@ Native: `cargo run --features web --bin zoners-web`. It does not read `.env`, so
 
 ## Configuration
 
-| Variable       | Required | Default | Notes                                                           |
-| -------------- | -------- | ------- | --------------------------------------------------------------- |
-| `ZONERS_ZONES` | no       | unset   | The places, separated by `;`. See [Places](#places)             |
-| `ZONERS_PORT`  | no       | `5051`  | Listen port. Compose publishes it on 127.0.0.1                  |
-| `TZ`           | no       | `UTC`   | Source zone when the browser cannot supply one (no JavaScript)  |
+| Variable       | Required | Default | Notes                                                          |
+| -------------- | -------- | ------- | -------------------------------------------------------------- |
+| `ZONERS_ZONES` | no       | unset   | The places, separated by `;`. See [Places](#places)            |
+| `ZONERS_PORT`  | no       | `5051`  | Listen port. Compose publishes it on 127.0.0.1                 |
+| `TZ`           | no       | `UTC`   | Source zone when the browser cannot supply one (no JavaScript) |
 
 ## Places
 
